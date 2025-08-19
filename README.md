@@ -6,11 +6,11 @@ This is an attempt at documenting the radio interface used by GODOX flash trigge
 
 Judging by the spectrum, transmission bursts are some sort of FSK:
 
-![Spectrum of the baseband signal during transmission](baseband_spectrum.png)
+![Spectrum of the baseband signal during transmission](assets/baseband_spectrum.png)
 
 FM demodulating a burst gives us a (bipolar) [return-to-zero] signal, where each binary symbol is interspersed with a zero symbol:
 
-![FM-demodulated baseband signal](demod.png)
+![FM-demodulated baseband signal](assets/demod.png)
 
 The bits are sent at 250kbps (which gives 500k symbols per second if we count the zeros). Frequency deviation appears to be around 200kHz. However **the polarity is inverted**, negative deviation means 1 and positive deviation means 0.
 
