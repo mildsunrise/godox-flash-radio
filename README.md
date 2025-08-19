@@ -2,6 +2,10 @@
 
 This is an attempt at documenting the radio interface used by GODOX flash triggers to wirelessly control flash units (communicate settings and trigger them). The reader is assumed to have user-level familiarity with the GODOX flash system; we found the user manual for remote triggers to be useful in clarifying some concepts.
 
+In addition to documentation, a basic receiver is included, see [tooling](#tooling).
+
+Issues and PRs welcome! Question marks (?) indicate guesses we're not sure about.
+
 # Layer 1
 
 Judging by the spectrum, transmission bursts are some sort of FSK:
@@ -72,7 +76,7 @@ The following properties have been observed so far. The "target receivers" colum
 | 0xBD | Strobe exposure | specific | Serves the same purpose (and carries the same values as) 0xBC, but when mode is strobe rather than manual. 0xFF disables the flash. Not set in other modes. |
 | 0xBE | Strobe count | all | Amount of flash firings when triggered in strobe mode. Not set for other modes. |
 | 0xBF | Strobe frequency | all | Spacing between flash firings when triggered in strobe mode, with the value in units of Hertz. Not set for other modes. |
-| 0xC0 | | all | Unknown? But always set to value 3, both when testing and shooting |
+| 0xC0 | | all | Unknown? But always set to value 3, both when testing and shooting, and before any other setting |
 | **0xDX** | **Modelling light properties** | | |
 | 0xD1 | Intensity | specific | Intensity of the modelling light, as a percentage (range [0, 100]). Only takes effect when 0xD6 is disabled.
 | 0xD3 | Enabled | specific | <p>Whether the modelling light is turned on at all.</p> <table><thead><tr><td>Value</td><td>Meaning</td></tr></thead><tbody> <tr><td>0</td><td>Disabled</td></tr> <tr><td>1</td><td>Enabled</td></tr> </tbody></table> |
@@ -98,9 +102,9 @@ This seem to be addressed to all flashes. We haven't been able to determine much
 
     - `001010`: **Shutter?**: don't know what it does, but it's sent 2x when pressing the SHUTTER button
 
-    - `100001`: **Flash unprepare?**: don't know what it does, but it's sent once in the following situations:
-      - when releasing the TEST button
-      - when shooting with the camera, 20ms after triggering the flashes
+    - `100001`: **Flash unprepare?**: don't know what it does, but it's sent in the following situations:
+      - 2x when releasing the TEST button
+      - 1x when shooting with the camera, 20ms after triggering the flashes
 
  - `10`... (these set a property)
     - `00000X`: **Set beeper** OFF (X = 0) or ON (X = 1)
@@ -108,6 +112,33 @@ This seem to be addressed to all flashes. We haven't been able to determine much
 
  - `01000000`: unsure what this does, but it's sent together with the other properties, suggesting this is also about setting a property
 
+# Tooling
+
+For now, only a basic receiver is included. It's composed of:
+
+ - A basic GNU Radio Companion pipeline, whose only purpose is fetching I/Q samples from the SDR, extract the 1MHz channel from it, and make it available on TCP port 20000.
+
+ - A Python CLI tool that streams from the port, selects bursts over a certain threshold, tries to decode and parse them, and logs them to the console. The only dependency is Numpy.
+
+Here's an example of the receiver's output when the TEST button is pressed and then released:
+
+![Receiver output with a press and release of the TEST button](assets/receiver_test.png)
+
+Each message is printed as a single line, prefixed with the gap since it and the last (successfully decoded) burst, as well as the median power level for the burst. It's meant to be for reverse-engineering, not for final users, so manage your expectations when it comes to code quality or robustness (especially if you have substantial interference from other appliances on the channel).
+
+To use it:
+
+ - Install Python, GNU Radio, gr-osmosdr and Numpy. The easiest way to do this is with a distribution such as [Radioconda][].
+
+ - Open the provided `basic.grc` pipeline in GNU Radio Companion. This pipeline is designed for [HackRF][] SDRs, and will need some adapting if you wish to use it with other SDRs, like RTL-SDR.
+
+ - By default the pipeline listens on a center frequency of 2424.5 MHz, which corresponds to channel 8. Either ensure your units are set to this channel, or change the frequency by tweaking the variable `center_freq`.
+
+ - Run the pipeline by clicking on the Play button.
+
+ - With the pipeline running, start the Python receiver: `python3 receiver.py`. Since it uses the power level to distinguish bursts, you might need to increase the threshold (if a lot of non-bursts are getting detected and attempting to be decoded, which will result in a looot of errors) or decrease it (if nothing is being detected). To do this, tweak the `threshold_db` variable in the script, which is set to -30dB by default.
 
 
 [return-to-zero]: https://en.wikipedia.org/wiki/Return-to-zero
+[radioconda]: https://github.com/radioconda/radioconda-installer
+[HackRF]: https://greatscottgadgets.com/hackrf
