@@ -114,7 +114,9 @@ This seem to be addressed to all flashes. We haven't been able to determine much
 
 # Tooling
 
-For now, only a basic receiver is included. It's composed of:
+## Receiver
+
+A basic receiver is included. It's composed of:
 
  - A basic GNU Radio Companion pipeline, whose only purpose is fetching I/Q samples from the SDR, extract the 1MHz channel from it, and make it available on TCP port 20000.
 
@@ -137,6 +139,16 @@ To use it:
  - Run the pipeline by clicking on the Play button.
 
  - With the pipeline running, start the Python receiver: `python3 receiver.py`. Since it uses the power level to distinguish bursts, you might need to increase the threshold (if a lot of non-bursts are getting detected and attempting to be decoded, which will result in a looot of errors) or decrease it (if nothing is being detected). To do this, tweak the `threshold_db` variable in the script, which is set to -30dB by default.
+
+## Transmitter
+
+A proof-of-concept transmitter Python module is included in `transmitter.py` which writes RF bursts to stdout. The physical layer still needs a bit of tuning, because frames are often lost and some frames just never work. Only depends on `numpy` and outputs 2MHz-sampled bursts in HackRF format (8-bit signed integer I/Q). You can feed its output to `hackrf_transfer` to transmit the burst through a HackRF radio:
+
+```bash
+python -c 'from transmitter import *; Command(55).short_command(ShortCommand.FLASH_TEST)' | hackrf_transfer -t- -s2000000 -f2424500000
+```
+
+The above will do a flash test to network 55 on channel 8. See the API for other commands.
 
 
 [return-to-zero]: https://en.wikipedia.org/wiki/Return-to-zero
